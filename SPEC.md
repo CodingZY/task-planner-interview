@@ -1,6 +1,6 @@
 # SPEC.md — 日程生成额度处理改进
 
-> 状态：**初稿 v1（2026-10-23），未开始实现**。后续修订记入文末[修订记录](#修订记录)，与 Git 历史对应；实现期间的调整同步回本文，保持文档与最终实现一致。
+> 状态：**v1.1（2026-10-23），已实现并通过自动化验证**（AC-5 浏览器人工步骤除外）。修订记入文末[修订记录](#修订记录)，与 Git 历史对应；文档与最终实现保持一致。
 
 ## 1. 问题判断与方案概要
 
@@ -132,8 +132,9 @@
 
 ## 7. 测试与运行方式
 
-- `./scripts/test-db-setup.sh`：在本机 PostgreSQL 实例中幂等创建测试库（默认 `TaskPlannerLab-…-test`，与开发库隔离）并应用 `migrations/`。需 Docker 开发库容器运行中。
-- `npm test`（= `npx vitest run`）：覆盖 AC-1/2/3/4/6 的服务端行为；并发用例通过 `Promise.all` 同发 N 次并断言终态与 `mock-ai.started` 次数（捕获 `console.info`）。
+- `./scripts/test-db-setup.sh`：在本机 PostgreSQL 实例中幂等创建测试库（默认 `taskplanner_test`，与开发库隔离）并应用 `migrations/`。需 Docker 开发库容器运行中。
+- `npm test`（= 先执行上述脚本，再 `vitest run`）：覆盖 AC-1/2/3/4/6 及 E3 的服务端行为；并发用例通过 `Promise.all` 同发 N 次并断言终态与 `mock-ai.started` 次数（捕获 `console.info`）。
+- `node scripts/verify-http.mjs http://localhost:3001`（需 `wasp start` 运行中）：HTTP 端到端验证，走与浏览器相同的路由与会话认证（注册→登录→`POST /operations/*`），覆盖 AC-1/2/3/4；每次运行创建随机新账号，可重复执行。
 - `wasp compile` 与 `README.md` 中两个 `tsc --noEmit` 检查保持通过。
 - 测试对测试库自清理（按用户删除 `PlanResult`、`Task` 后删 `User`），可重复执行。
 
@@ -142,11 +143,12 @@
 完整清单在本文 §2；交接视角的摘要与待办在 [SUBMISSION.md](SUBMISSION.md)。已知限制：
 
 - 崩溃窗口的额度丢失、退还不做补偿（题目豁免，见 §2）。
-- AC-5 为人工验证，不提供浏览器自动化。
-- HTTP 层（真实 Session、路由）由既有 Wasp 机制保障，测试直接覆盖操作之下的核心流程；如时间允许补充基于 HTTP 的并发脚本（列为待办，不阻塞交付）。
+- AC-5 为人工验证，不提供浏览器自动化；HTTP 层已验证服务端文案与状态码，UI 文案与之一致。
+- HTTP 层并发脚本已交付（§7）；其运行依赖 `wasp start` 的默认端口 3001，端口不同时需显式传入。
 
 ## 修订记录
 
 | 日期 | 版本 | 变更 | 提交 |
 | --- | --- | --- | --- |
-| 2026-10-23 | v1 | 初稿：方案、流程、并发思路、实现步骤与验收案例 | 本分支首个提交 |
+| 2026-10-23 | v1 | 初稿：方案、流程、并发思路、实现步骤与验收案例 | `6ac0d43` |
+| 2026-10-23 | v1.1 | 实现完成后同步：HTTP 端到端脚本由「待办」转为已交付（§7）；AC-5 标注为人工步骤并说明 HTTP 层已验证同源文案（§8）；测试库名定为 `taskplanner_test` | 文档提交（见 git log） |
